@@ -1,4 +1,3 @@
-
 import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
@@ -11,8 +10,9 @@ from time import time
 import phonenumbers as pnumb
 from phonenumbers import geocoder, carrier, timezone
 import logging
-
-API_TOKEN = 'Ну вставь уже в меня, свой б-большой токен, я тебя прошу'
+import re
+import requests
+API_TOKEN = 'Семпай, у т-тебя такой б-б-большой токен, хочу чтобы ты вставил его в меня:)'
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -23,38 +23,32 @@ async def search_directory(directory, search_text, message):
     total_files = sum(len(files) for _, _, files in os.walk(directory))
     files_checked = 0
 
-    progress_message = await message.answer("🔍 Поиск в процессе...", reply_markup=main_keyboard())
+    progress_message = await message.answer("🔍 Поиск в процессе... ")
     progress_percent = 0
-
-    async def update_progress():
-        nonlocal progress_percent
-        new_progress_percent = int(files_checked / total_files * 100)
-        if new_progress_percent != progress_percent:
-            progress_percent = new_progress_percent
-            progress_bar_length = 30
-            progress_bar = "█" * int(progress_percent / (100 / progress_bar_length)) + " " * (
-                    progress_bar_length - int(progress_percent / (100 / progress_bar_length)))
-            progress_message_text = f"🔍 Проверено: {progress_percent}%\n[{progress_bar}]"
-            await bot.edit_message_text(chat_id=progress_message.chat.id, message_id=progress_message.message_id,
-                                        text=progress_message_text, reply_markup=main_keyboard())
-
-    tasks = []
 
     for root, dirs, files in os.walk(directory):
         for file_name in files:
             if file_name.endswith(".txt"):
                 file_path = os.path.join(root, file_name)
-                tasks.append(process_file(file_path, search_text, message))
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
+                    for line in file:
+                        if search_text in line:
+                            await message.answer(f"🔍 Найдено в: {file_path}\n📄 Строка: {line.strip()}",
+                                                 parse_mode=ParseMode.HTML)
             files_checked += 1
-            if files_checked % 10 == 0:
-                await update_progress()
-
-    await asyncio.gather(*tasks)
-
+            new_progress_percent = int(files_checked / total_files * 100)
+            if new_progress_percent != progress_percent:
+                progress_percent = new_progress_percent
+                progress_bar_length = 30
+                progress_bar = "█" * int(progress_percent / (100 / progress_bar_length)) + " " * (
+                        progress_bar_length - int(progress_percent / (100 / progress_bar_length)))
+                progress_message_text = f"🔍 Проверено: {progress_percent}%\n[{progress_bar}]"
+                await bot.edit_message_text(chat_id=progress_message.chat.id, message_id=progress_message.message_id,
+                                            text=progress_message_text)
     if files_checked == 0:
-        await message.answer("❌ Не найдено файлов для проверки.", reply_markup=main_keyboard())
+        await message.answer("❌ Не найдено файлов для проверки.")
     else:
-        await message.answer("✅ Поиск завершен.", reply_markup=main_keyboard())
+        await message.answer("✅ Поиск завершен.")
 
 
 async def process_file(file_path, search_text, message):
@@ -267,7 +261,55 @@ async def check_status(session, social_network, url, username):
     except aiohttp.ClientError:
         pass
     return None
+IP_REGEX = re.compile(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b")
 
+# Новый обработчик сообщений для поиска IP-адресов
+@dp.message_handler(lambda message: IP_REGEX.search(message.text))
+async def handle_ip_message(message: types.Message):
+    # Извлекаем IP-адрес из текста сообщения
+    targetip = IP_REGEX.search(message.text).group()
+    # Получаем информацию о IP-адресе
+    info = await get_ip_info(targetip)
+    # Отправляем информацию пользователю
+    await message.answer(info)
+
+# Функция для получения информации о IP-адресе
+async def get_ip_info(targetip):
+    r = requests.get("http://ip-api.com/json/" + targetip)
+    result = ""
+    if r.status_code == 200:
+        result += f"\n[*] Подробная информация об IP-адресе:\n"
+        if r.json()['status'] == 'success':
+            result += f"[*] Статус         : {r.status_code}\n"
+            result += f"[*] Статус         : {r.json()['status']}\n"
+            result += f"[*] Целевой IP-адрес: {r.json()['query']}\n"
+            result += f"[*] Страна         : {r.json()['country']}\n"
+            result += f"[*] Код страны     : {r.json()['countryCode']}\n"
+            result += f"[*] Город          : {r.json()['city']}\n"
+            result += f"[*] Часовой пояс   : {r.json()['timezone']}\n"
+            result += f"[*] Название региона: {r.json()['regionName']}\n"
+            result += f"[*] Регион         : {r.json()['region']}\n"
+            result += f"[*] Почтовый индекс: {r.json()['zip']}\n"
+            result += f"[*] Широта         : {r.json()['lat']}\n"
+            result += f"[*] Долгота        : {r.json()['lon']}\n"
+            result += f"[*] Провайдер      : {r.json()['isp']}\n"
+            result += f"[*] Организация    : {r.json()['org']}\n"
+            result += f"[*] AS             : {r.json()['as']}\n"
+            result += f"[*] Местоположение  : {r.json()['lat']}, {r.json()['lon']}\n"
+            result += f"[*] Google Карта   : https://maps.google.com/?q={r.json()['lat']},{r.json()['lon']}\n"
+        elif r.json()['status'] == 'fail':
+            result += f"[*] Статус         : {r.status_code}\n"
+            result += f"[*] Статус         : {r.json()['status']}\n"
+            result += f"[*] Сообщение      : {r.json()['message']}\n"
+            if r.json()['message'] == 'invalid query':
+                result += f"\n[!] {targetip} - это неверный IP-адрес, попробуйте другой IP-адрес.\n"
+            elif r.json()['message'] == 'private range':
+                result += f"\n[!] {targetip} - это частный IP-адрес, его нельзя проследить.\n"
+            elif r.json()['message'] == 'reserved range':
+                result += f"\n[!] {targetip} - это зарезервированный IP-адрес, его нельзя проследить.\n"
+            else:
+                result += f"\nПроверьте ваше интернет-соединение.\n"
+    return result
 
 @dp.message_handler(lambda message: message.text == '⛔ Остановить поиск', state="*")
 async def stop_search(message: types.Message):
