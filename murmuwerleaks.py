@@ -12,7 +12,7 @@ from phonenumbers import geocoder, carrier, timezone
 import logging
 import re
 import requests
-API_TOKEN = 'Семпай, у т-тебя такой б-б-большой токен, хочу чтобы ты вставил его в меня:)'
+API_TOKEN = 'давай, вставь его в меня малыш'
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
@@ -94,15 +94,15 @@ async def process_phone_number(phone_number, message):
         timezoneF = ', '.join(tz)
 
         info = (
-            f"<b>Информация о номере телефона📞 :</b>\n"
-            f"Локация: {location}\n"
-            f"Код региона:☎ {region_code}\n"
-            f"Временная зона🕛: {timezoneF}\n"
-            f"Оператор📡: {isp}\n"
-            f"Валидность номера: {is_valid_number}\n"
-            f"Возможный номер: {is_possible_number}\n"
-            f"Интернациональный формат: {formatted_number}\n"
-            f"Мобильный формат: {formatted_number_for_mobile}\n"
+            f"<b>Информация о номере телефона :</b>\n"
+            f"Локация: {location}📍\n"
+            f"Код региона: {region_code}☎\n"
+            f"Временная зона: {timezoneF}🕛\n"
+            f"Оператор: {isp}📡\n"
+            f"Валидность номера: {is_valid_number}✅\n"
+            f"Возможный номер: {is_possible_number}❓\n"
+            f"Интернациональный формат: {formatted_number}🌐\n"
+            f"Мобильный формат: {formatted_number_for_mobile}📱\n"
             f"Оригинальный номер: {parsed_number.national_number}\n"
             f"E164 формат: {pnumb.format_number(parsed_number, pnumb.PhoneNumberFormat.E164)}\n"
             f"Страны код: {parsed_number.country_code}\n"
@@ -158,7 +158,7 @@ async def search_social_media(message: types.Message, username: str):
             'scribd': 'https://www.scribd.com/{}',
             'badoo': 'https://www.badoo.com/en/{}',
             'patreon': 'https://www.patreon.com/{}',
-            'XXX.ru(porn)': 'https://www.xv-ru.com/{}',
+            'XXX.ru(18+)': 'https://www.xv-ru.com/{}',
             'bitbucket': 'https://bitbucket.org/{}',
             'dailymotion': 'https://www.dailymotion.com/{}',
             'etsy': 'https://www.etsy.com/shop/{}',
@@ -228,13 +228,14 @@ async def search_social_media(message: types.Message, username: str):
             'boothpm': 'https://{}.booth.pm/',
             'behance2': 'https://www.behance.net/{}',
             'bodyspace': 'https://bodyspace.bodybuilding.com/{}',
-            'bongacams': 'https://pt.bongacams.com/profile/{}',
+            'bongacams(18+)': 'https://pt.bongacams.com/profile/{}',
             'careerhabr': 'https://career.habr.com/{}',
-            'chaturbate': 'https://chaturbate.com/{}',
+            'chaturbate(18+)': 'https://chaturbate.com/{}',
             'chesscom': 'https://www.chess.com/member/{}',
             'codecademy2': 'https://www.codecademy.com/profiles/{}',
             'cryptomatorcommunity': 'https://community.cryptomator.org/u/{}',
-            'duolingo': 'https://www.duolingo.com/profile/{}'
+            'duolingo': 'https://www.duolingo.com/profile/{}',
+            'Pornhub(18+)':   'https://rt.pornhub.com/users/{}'
     }
 
     found_results = await verify_username(username, links)
@@ -263,44 +264,43 @@ async def check_status(session, social_network, url, username):
     return None
 IP_REGEX = re.compile(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b")
 
-# Новый обработчик сообщений для поиска IP-адресов
 @dp.message_handler(lambda message: IP_REGEX.search(message.text))
 async def handle_ip_message(message: types.Message):
-    # Извлекаем IP-адрес из текста сообщения
+
     targetip = IP_REGEX.search(message.text).group()
-    # Получаем информацию о IP-адресе
+
     info = await get_ip_info(targetip)
-    # Отправляем информацию пользователю
+
     await message.answer(info)
 
-# Функция для получения информации о IP-адресе
+
 async def get_ip_info(targetip):
     r = requests.get("http://ip-api.com/json/" + targetip)
     result = ""
     if r.status_code == 200:
         result += f"\n[*] Подробная информация об IP-адресе:\n"
         if r.json()['status'] == 'success':
-            result += f"[*] Статус         : {r.status_code}\n"
-            result += f"[*] Статус         : {r.json()['status']}\n"
-            result += f"[*] Целевой IP-адрес: {r.json()['query']}\n"
-            result += f"[*] Страна         : {r.json()['country']}\n"
-            result += f"[*] Код страны     : {r.json()['countryCode']}\n"
-            result += f"[*] Город          : {r.json()['city']}\n"
-            result += f"[*] Часовой пояс   : {r.json()['timezone']}\n"
-            result += f"[*] Название региона: {r.json()['regionName']}\n"
-            result += f"[*] Регион         : {r.json()['region']}\n"
-            result += f"[*] Почтовый индекс: {r.json()['zip']}\n"
-            result += f"[*] Широта         : {r.json()['lat']}\n"
-            result += f"[*] Долгота        : {r.json()['lon']}\n"
-            result += f"[*] Провайдер      : {r.json()['isp']}\n"
-            result += f"[*] Организация    : {r.json()['org']}\n"
-            result += f"[*] AS             : {r.json()['as']}\n"
-            result += f"[*] Местоположение  : {r.json()['lat']}, {r.json()['lon']}\n"
-            result += f"[*] Google Карта   : https://maps.google.com/?q={r.json()['lat']},{r.json()['lon']}\n"
+            result += f"[*] 🟢 Статус         : {r.status_code}\n"
+            result += f"[*] 🟢 Статус         : {r.json()['status']}\n"
+            result += f"[*] 🌐 Целевой IP-адрес: {r.json()['query']}\n"
+            result += f"[*] 🌐 Страна         : {r.json()['country']}\n"
+            result += f"[*] 🌐 Код страны     : {r.json()['countryCode']}\n"
+            result += f"[*] 🌆 Город          : {r.json()['city']}\n"
+            result += f"[*] ⏰ Часовой пояс   : {r.json()['timezone']}\n"
+            result += f"[*] 🌐 Название региона: {r.json()['regionName']}\n"
+            result += f"[*] 🌐 Регион         : {r.json()['region']}\n"
+            result += f"[*] 📮 Почтовый индекс: {r.json()['zip']}\n"
+            result += f"[*] 🌍 Широта         : {r.json()['lat']}\n"
+            result += f"[*] 🌍 Долгота        : {r.json()['lon']}\n"
+            result += f"[*] 📡 Провайдер      : {r.json()['isp']}\n"
+            result += f"[*] 🏢 Организация    : {r.json()['org']}\n"
+            result += f"[*] 🌐 AS             : {r.json()['as']}\n"
+            result += f"[*] 📍 Местоположение  : {r.json()['lat']}, {r.json()['lon']}\n"
+            result += f"[*] 🗺️ Google Карта   : https://maps.google.com/?q={r.json()['lat']},{r.json()['lon']}\n"
         elif r.json()['status'] == 'fail':
-            result += f"[*] Статус         : {r.status_code}\n"
-            result += f"[*] Статус         : {r.json()['status']}\n"
-            result += f"[*] Сообщение      : {r.json()['message']}\n"
+            result += f"[*] 🔴 Статус         : {r.status_code}\n"
+            result += f"[*] 🔴 Статус         : {r.json()['status']}\n"
+            result += f"[*] ❌ Сообщение      : {r.json()['message']}\n"
             if r.json()['message'] == 'invalid query':
                 result += f"\n[!] {targetip} - это неверный IP-адрес, попробуйте другой IP-адрес.\n"
             elif r.json()['message'] == 'private range':
@@ -309,7 +309,7 @@ async def get_ip_info(targetip):
                 result += f"\n[!] {targetip} - это зарезервированный IP-адрес, его нельзя проследить.\n"
             else:
                 result += f"\nПроверьте ваше интернет-соединение.\n"
-    return result
+        return result
 
 @dp.message_handler(lambda message: message.text == '⛔ Остановить поиск', state="*")
 async def stop_search(message: types.Message):
